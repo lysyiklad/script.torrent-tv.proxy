@@ -57,12 +57,12 @@ class WMainForm(xbmcgui.WindowXML):
     API_ERROR_NOPARAM = 'noparam'
     API_ERROR_NOFAVOURITE = 'nofavourite'
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs):        
         self.isCanceled = False
         self.translation = []
         self.category = {}
         self.category_tmp = None
-        self.category_tmp_httpaceproxy = None
+#        self.category_tmp_httpaceproxy = None
         self.epg_id_httpaceproxy = {}
         self.seltab = 0
         #self.epg = {}
@@ -71,9 +71,9 @@ class WMainForm(xbmcgui.WindowXML):
         self.img_progress = None
         self.txt_progress = None
         self.list = None
-        self.player = MyPlayer("player.xml", defines.SKIN_PATH, defines.ADDON.getSetting('skin'))
+        self.player = MyPlayer("player.xml", defines.SKIN_PATH, "estuary")
         self.player.parent = self
-        self.amalkerWnd = AdsForm("adsdialog.xml", defines.SKIN_PATH, defines.ADDON.getSetting('skin'))
+        self.amalkerWnd = AdsForm("adsdialog.xml", defines.SKIN_PATH, "estuary")
         self.cur_category = WMainForm.CHN_TYPE_FAVOURITE
         self.epg = {}
         self.selitem_id = -1
@@ -81,12 +81,13 @@ class WMainForm(xbmcgui.WindowXML):
         self.user = None
         self.infoform = None
         self.engine = defines.ADDON.getSetting("engine")
-        print "%s" % defines.ADDON.getSetting("engine")
-        if self.engine == "":
-            self.engine = defines.ENGINE_NOXBIT
-            defines.ADDON.setSetting("engine", "%s" % defines.ENGINE_NOXBIT)
-        else:
-            self.engine = int(self.engine)
+        print "+++++ +++++ %s" % self.engine
+        # if self.engine == "":
+            # self.engine = defines.ENGINE_HTTPACEPROXY
+            # defines.ADDON.setSetting("engine", "%s" % defines.ENGINE_HTTPACEPROXY)
+        # else:
+        self.engine = int(self.engine)
+        print self.engine
 
     def checkZones(self):
         userinfo = defines.getUserInfo(self.session)
@@ -106,13 +107,14 @@ class WMainForm(xbmcgui.WindowXML):
 
     def initLists(self):
         self.category = {}
-        self.category[WMainForm.CHN_TYPE_MODERATION] = { "name" : WMainForm.CHN_TYPE_MODERATION, "channels": []}
+        # self.category[WMainForm.CHN_TYPE_MODERATION] = { "name" : WMainForm.CHN_TYPE_MODERATION, "channels": []}
         self.category[WMainForm.CHN_TYPE_FAVOURITE] = { "name" : WMainForm.CHN_TYPE_FAVOURITE, "channels": []}
         self.translation = []
 
     def curl_gzip_pomoyka(self, request, path_playlist_pomoyka):
         from StringIO import StringIO
         import gzip
+        list = ''
         request.add_header('Accept-encoding', 'gzip')
         response = urllib2.urlopen(request)
         if response.info().get('Content-Encoding') == 'gzip':
@@ -124,203 +126,136 @@ class WMainForm(xbmcgui.WindowXML):
                 playlist.write(lines)
         return lines
 
-    def getChannels(self, param):
-        if self.engine == defines.ENGINE_HTTPACEPROXY or self.engine == defines.ENGINE_POMOYKA:
-            if not self.category_tmp_httpaceproxy:
-                if param == 'channel':
-                    data = defines.GET('http://1ttvxbmc.top/v3/translation_list.php?session=%s&type=%s&typeresult=json' % (self.session, param), cookie = self.session)
-                    jdata = json.loads(data)
-                    for ch in jdata['channels']:
-                        if not ch["name"]:
-                            continue
-                        name = ch.get('name', None).encode('utf-8')
-                        epg = ch.get('epg_id', None)
-                        if not name or not epg:
-                            continue
-                        self.epg_id_httpaceproxy[name] = epg
+    def getChannels(self, param):        
+        if self.engine == defines.ENGINE_HTTPACEPROXY or self.engine == defines.ENGINE_POMOYKA:             
+            #if not self.category_tmp_httpaceproxy:             
+             #if param == 'channel':
+                 # data = defines.GET('http://1ttvxbmc.top/v3/translation_list.php?session=%s&type=%s&typeresult=json' % (self.session, param), cookie = self.session)
+                 # jdata = json.loads(data)
+                 # for ch in jdata['channels']:
+                     # if not ch["name"]:
+                         # continue
+                     # name = ch.get('name', None).encode('utf-8')
+                     # epg = ch.get('epg_id', None)
+                     # if not name or not epg:
+                         # continue
+                     # self.epg_id_httpaceproxy[name] = epg
 
-                channels = []
-                channel = {} 
-                handlers = ''
+             channels = []
+             channel = {} 
+             handlers = ''
 
-                if self.engine == defines.ENGINE_HTTPACEPROXY:
-                    handlers = defines.getSetting("handlers_plugin_aceproxy") 
-                    url = 'http://%s:%s/%s' % (defines.ADDON.getSetting("ip_aceproxy"), defines.ADDON.getSetting("port_aceproxy"), handlers)
-                    lines = defines.GET(url)
-                else:   # Pomoyka                    
-                    path_playlist = os.path.join(defines.ADDON_PATH, 'pomoyka.m3u')
-                    print 'lysyi ENGINE_POMOYKA path_playlist %s' % path_playlist
-                    if defines.ADDON.getSetting("m3uPathType") == '0': #Локальный путь (в т.ч. Локальная Сеть)
-                        pl = defines.ADDON.getSetting("m3uPath")
-                        with open(pl, 'r') as f:
-                            lines = f.read()
-                    else:
-                        url = defines.getSetting("m3uUrl")
-                        print 'lysyi ENGINE_POMOYKA url %s' % url
-                        if defines.getSetting("oldm3uUrl") != url or not os.path.isfile(path_playlist):
-                            print 'lysyi ENGINE_POMOYKA new url %s' % url
-                            #lines = defines.GET(url)
-                            request = urllib2.Request(url = url)
-                            lines = self.curl_gzip_pomoyka(request, path_playlist)
-                            # with open(path_playlist, 'w') as playlist:
-                            #     playlist.write(lines)
-                            defines.setSetting("oldm3uUrl", url)
-                        else:                            
-                            # from StringIO import StringIO
-                            # import gzip
+             if self.engine == defines.ENGINE_HTTPACEPROXY:
+                 print '+++++  lysyi defines.ENGINE_HTTPACEPROXY'
+                 handlers = defines.getSetting("handlers_plugin_aceproxy") 
+                 url = 'http://%s:%s/%s' % (defines.ADDON.getSetting("ip_aceproxy"), defines.ADDON.getSetting("port_aceproxy"), handlers)
+                 print url
+                 lines = defines.GET(url)                    
+             else:   # Pomoyka                                     
+                 path_playlist = os.path.join(defines.ADDON_PATH, 'pomoyka.m3u')
+                 print 'lysyi ENGINE_POMOYKA path_playlist %s' % path_playlist
+                 if defines.ADDON.getSetting("m3uPathType") == '0': #Локальный путь (в т.ч. Локальная Сеть)
+                     pl = defines.ADDON.getSetting("m3uPath")
+                     with open(pl, 'r') as f:
+                         lines = f.read()
+                 else:
+                     url = defines.getSetting("m3uUrl")
+                     print 'lysyi ENGINE_POMOYKA url %s' % url
+                     if defines.getSetting("oldm3uUrl") != url or not os.path.isfile(path_playlist):
+                         print 'lysyi ENGINE_POMOYKA new url %s' % url
+                         #lines = defines.GET(url)
+                         request = urllib2.Request(url = url)
+                         lines = self.curl_gzip_pomoyka(request, path_playlist)                            
+                         # with open(path_playlist, 'w') as playlist:
+                         #     playlist.write(lines)
+                         defines.setSetting("oldm3uUrl", url)
+                     else:                            
+                         # from StringIO import StringIO
+                         # import gzip
 
-                            lastmod_pomoyka = defines.getSetting("lastmod_pomoyka") 
-                            print 'lysyi ENGINE_POMOYKA lastmod_pomoyka %s' % lastmod_pomoyka
-                            request = urllib2.Request(url = url)
-                            try:                    
-                                opener = urllib2.build_opener() 
-                                request.add_header('If-Modified-Since', lastmod_pomoyka)
-                                datastream = opener.open(request)
-                                lastmod_pomoyka = datastream.headers.get('Last-Modified')
-                                defines.setSetting("lastmod_pomoyka", lastmod_pomoyka)
-                                print 'lysyi ENGINE_POMOYKA datastream.headers.dict %s' % datastream.headers.dict
-                            except:
-                                print 'lysyi ENGINE_POMOYKA open old playlist %s' % path_playlist
-                                with open(path_playlist, 'r') as infile:
-                                    lines = infile.read()
-                            else:
-                                lines = self.curl_gzip_pomoyka(request, path_playlist)                                    
+                         lastmod_pomoyka = defines.getSetting("lastmod_pomoyka") 
+                         print 'lysyi ENGINE_POMOYKA lastmod_pomoyka %s' % lastmod_pomoyka
+                         request = urllib2.Request(url = url)
+                         try:                    
+                             opener = urllib2.build_opener() 
+                             request.add_header('If-Modified-Since', lastmod_pomoyka)
+                             datastream = opener.open(request)
+                             lastmod_pomoyka = datastream.headers.get('Last-Modified')
+                             defines.setSetting("lastmod_pomoyka", lastmod_pomoyka)
+                             print 'lysyi ENGINE_POMOYKA datastream.headers.dict %s' % datastream.headers.dict
+                         except:
+                             print 'lysyi ENGINE_POMOYKA open old playlist %s' % path_playlist
+                             with open(path_playlist, 'r') as infile:
+                                 lines = infile.read()
+                         else:
+                             lines = self.curl_gzip_pomoyka(request, path_playlist)                                    
+             #print lines
 
-                if not lines:
-                    return   
+             if not lines:
+                 return   
 
-                if not lines.startswith('#EXTM3U'):
-                    print 'NO #EXTM3U'
-                    return              
+             if not lines.startswith('#EXTM3U'):
+                 print 'NO #EXTM3U'
+                 return              
 
-                lines = lines.splitlines()   
-                 
-                for line in lines:
-                    line=line.strip()                                      
-                    if line.startswith('#EXTINF:'):
-                        arg, title=line.split('#EXTINF:')[1].split(',',1)
-                        channel['title'] = title                        
-                        i = 0
-                        while True:
-                            i = arg.find('=', i, len(arg))
-                            if i == -1: break             
-                            p = arg[arg.rfind(' ', 0, i)+1:i]  
-                            i = arg.find('"', i+2, len(arg))
-                            if i == -1: break             
-                            v = arg[arg.rfind('"', 0, i)+1:i]
-                            channel[p] = v
-                        if not channel.get('group-title', None):
-                            channel['group-title'] = 'Каналы'
-                    elif line.startswith('#EXTGRP:'):
-                        continue
-                    elif line.startswith('http'):
-                        if self.engine == defines.ENGINE_HTTPACEPROXY and handlers == 'films':
-                            local_ip = defines.getSetting("is_iplocal_films")
-                            if local_ip == 'false':
-                                line = line.replace('127.0.0.1', defines.getSetting("ip_aceproxy"))
-                        if self.engine == defines.ENGINE_POMOYKA:
-                            ip_ace = defines.getSetting("ip_ace_pomoyka")
-                            if ip_ace != '127.0.0.1':
-                                line = line.replace('127.0.0.1', ip_ace)
-                        channel["id"] = line
-                        channels.append(channel.copy())
+             lines = lines.splitlines()   
+              
+             for line in lines:
+                 line=line.strip()                                      
+                 if line.startswith('#EXTINF:'):
+                     arg, title=line.split('#EXTINF:')[1].split(',',1)
+                     channel['title'] = title                        
+                     i = 0
+                     while True:
+                         i = arg.find('=', i, len(arg))
+                         if i == -1: break             
+                         p = arg[arg.rfind(' ', 0, i)+1:i]  
+                         i = arg.find('"', i+2, len(arg))
+                         if i == -1: break             
+                         v = arg[arg.rfind('"', 0, i)+1:i]
+                         channel[p] = v
+                     if not channel.get('group-title', None):
+                         channel['group-title'] = 'Каналы'
+                 elif line.startswith('#EXTGRP:'):
+                     continue
+                 elif line.startswith('http'):
+                     if self.engine == defines.ENGINE_HTTPACEPROXY and handlers == 'films':
+                         local_ip = defines.getSetting("is_iplocal_films")
+                         if local_ip == 'false':
+                             line = line.replace('127.0.0.1', defines.getSetting("ip_aceproxy"))
+                     if self.engine == defines.ENGINE_POMOYKA:
+                         ip_ace = defines.getSetting("ip_ace_pomoyka")
+                         if ip_ace != '127.0.0.1':
+                             line = line.replace('127.0.0.1', ip_ace)
+                     channel["id"] = line
+                     channels.append(channel.copy())
 
 
-                for ch in channels:
-                    group = ch.get('group-title', None)
-                    if not group:
-                        continue
-                    if not self.category.get(group, None):
-                        self.category[group] = { "name": group, "channels": [] }
-                    id = ch.get('id', None)
-                    if not id:
-                        continue    
-                    logo = ch.get('tvg-logo', None)
-                    li = xbmcgui.ListItem(ch['title'], '%s' % id, logo, logo)
-                    li.setProperty('epg_cdn_id', '%s' % self.epg_id_httpaceproxy.get(ch['title'], 0))
-                    li.setProperty('icon', logo)
-                    li.setProperty("type", "channel")
-                    li.setProperty("id", '%s' % id)
-                    if param == 'channel':
-                        #li.setProperty('commands', "%s,%s" % (MenuForm.CMD_ADD_FAVOURITE, MenuForm.CMD_CLOSE_TS))
-                        self.category[group]["channels"].append(li)
-                    elif param == 'moderation':
-                        pass
-                        #li.setProperty('commands', "%s,%s" % (MenuForm.CMD_ADD_FAVOURITE, MenuForm.CMD_CLOSE_TS))
-                        #self.category[WMainForm.CHN_TYPE_MODERATION]["channels"].append(li)
-                    elif param == 'translation':
-                        pass
-                        #li.setProperty('commands', "%s,%s" % (MenuForm.CMD_ADD_FAVOURITE, MenuForm.CMD_CLOSE_TS))
-                        #self.translation.append(li)
-                    elif param == 'favourite':
-                        if handlers == 'films' and handlers == 'proxyfilms':
-                            continue
-                        if ch['title'] in favor.channels:
-                            #li.setProperty('commands', "%s,%s,%s,%s" % (MenuForm.CMD_DEL_FAVOURITE, MenuForm.CMD_UP_FAVOURITE, MenuForm.CMD_DOWN_FAVOURITE, MenuForm.CMD_CLOSE_TS))
-                            self.category[WMainForm.CHN_TYPE_FAVOURITE]["channels"].append(li)
+             for ch in channels:
+                 group = ch.get('group-title', None)
+                 if not group:
+                     continue
+                 if not self.category.get(group, None):
+                     self.category[group] = { "name": group, "channels": [] }
+                 id = ch.get('id', None)
+                 if not id:
+                     continue 
+                 #print ch['title']
+                 logo = ch.get('tvg-logo', None)
+                 li = xbmcgui.ListItem(ch['title'], '%s' % id, logo, logo)
+                 li.setProperty('epg_cdn_id', '%s' % self.epg_id_httpaceproxy.get(ch['title'], 0))
+                 li.setProperty('icon', logo)
+                 li.setProperty("type", "channel")
+                 li.setProperty("id", '%s' % id)
+                 if param == 'channel':
+                     #li.setProperty('commands', "%s,%s" % (MenuForm.CMD_ADD_FAVOURITE, MenuForm.CMD_CLOSE_TS))
+                     self.category[group]["channels"].append(li)                 
+                 elif param == 'favourite':
+                     if handlers == 'films' and handlers == 'proxyfilms':
+                         continue
+                     if ch['title'] in favor.channels:                         
+                         self.category[WMainForm.CHN_TYPE_FAVOURITE]["channels"].append(li)
                     
-
-                self.category_tmp_httpaceproxy = self.category
-
-            else:
-                self.category = self.category_tmp_httpaceproxy
-
-        else:
-            if not self.category_tmp:
-                data = defines.GET('http://1ttvxbmc.top/v3/translation_list.php?session=%s&type=%s&typeresult=json' % (self.session, param), cookie = self.session)
-                jdata = json.loads(data)
-                if jdata['success'] == 0:
-                    self.showStatus(jdata['error'])
-                    return
-
-                for cat in jdata["categories"]:
-                    if not self.category.has_key('%s' % cat["id"]):
-                        self.category['%s' % cat["id"]] = { "name": cat["name"], "channels": [] }
-
-                for ch in jdata['channels']:
-                    if not ch["name"]:
-                        continue
-                    if not ch['logo']:
-                        ch['logo'] = ''
-                    else:
-                        ch['logo'] = 'http://torrent-tv.ru/uploads/' + ch['logo']
-                
-                    chname = ch["name"]
-                    if ch["access_user"] == 0:
-                        chname = "[COLOR FF646464]%s[/COLOR]" % chname
-                    elif self.engine == defines.ENGINE_PROXY and ch["access_user_http_stream"] == 0:
-                        chname = "[COLOR FF646464]%s[/COLOR]" % chname
-
-                    
-
-                    li = xbmcgui.ListItem(chname, '%s' % ch['id'], ch['logo'], ch['logo'])
-                    li.setProperty('epg_cdn_id', '%s' % ch['epg_id'])
-                    li.setProperty('icon', ch['logo'])
-                    li.setProperty("type", "channel")
-                    li.setProperty("id", '%s' % ch["id"])
-                    li.setProperty("access_translation", ch["access_translation"])
-                    if self.engine == defines.ENGINE_PROXY:
-                        li.setProperty("access_user", '%s' % ch["access_user_http_stream"])
-                    else:
-                        li.setProperty("access_user", '%s' % ch["access_user"])
-
-                    if param == 'channel':
-                        li.setProperty('commands', "%s,%s" % (MenuForm.CMD_ADD_FAVOURITE, MenuForm.CMD_CLOSE_TS))
-                        self.category['%s' % ch['group']]["channels"].append(li)
-                    elif param == 'moderation':
-                        li.setProperty('commands', "%s,%s" % (MenuForm.CMD_ADD_FAVOURITE, MenuForm.CMD_CLOSE_TS))
-                        self.category[WMainForm.CHN_TYPE_MODERATION]["channels"].append(li)
-                    elif param == 'translation':
-                        li.setProperty('commands', "%s,%s" % (MenuForm.CMD_ADD_FAVOURITE, MenuForm.CMD_CLOSE_TS))
-                        self.translation.append(li)
-                    elif param == 'favourite':
-                        li.setProperty('commands', "%s,%s,%s,%s" % (MenuForm.CMD_DEL_FAVOURITE, MenuForm.CMD_UP_FAVOURITE, MenuForm.CMD_DOWN_FAVOURITE, MenuForm.CMD_CLOSE_TS))
-                        self.category[WMainForm.CHN_TYPE_FAVOURITE]["channels"].append(li)
-
-                self.category_tmp = self.category
-
-            else:
-                self.category = self.category_tmp
 
     def getArcChannels(self, param):
         data = defines.GET('http://1ttvxbmc.top/v3/arc_list.php?session=%s&typeresult=json' % self.session, cookie = self.session)
@@ -345,20 +280,21 @@ class WMainForm(xbmcgui.WindowXML):
             self.archive.append(li)
 
     def getEpg(self, param):
-       data = defines.GET('http://1ttvxbmc.top/v3/translation_epg.php?session=%s&epg_id=%s&typeresult=json' % (self.session, param), cookie = self.session)
-       print "getEpg === %s - %s" % (self.session, param)
-       jdata = json.loads(data)
-       if jdata['success'] == 0:
-          self.epg[param] = []
-          self.showSimpleEpg(param)
-       else:
-           self.epg[param] = jdata['data']
-           selitem = self.list.getSelectedItem()
+       # data = defines.GET('http://1ttvxbmc.top/v3/translation_epg.php?session=%s&epg_id=%s&typeresult=json' % (self.session, param), cookie = self.session)
+       # print "getEpg === %s - %s" % (self.session, param)
+       # jdata = json.loads(data)
+       # if jdata['success'] == 0:
+          # self.epg[param] = []
+          # self.showSimpleEpg(param)
+       # else:
+           # self.epg[param] = jdata['data']
+           # selitem = self.list.getSelectedItem()
            
-           if selitem.getProperty('epg_cdn_id') == param:
-               self.showSimpleEpg(param)
+           # if selitem.getProperty('epg_cdn_id') == param:
+               # self.showSimpleEpg(param)
            
-       self.hideStatus()
+       # self.hideStatus()
+       pass
 
     def showScreen(self, cdn):
         if defines.tryStringToInt(cdn) < 1:
@@ -380,25 +316,25 @@ class WMainForm(xbmcgui.WindowXML):
             self.img_progress = self.getControl(108)
             self.txt_progress = self.getControl(107)
             self.progress = self.getControl(WMainForm.PROGRESS_BAR)
-            self.showStatus("Авторизация")
-            guid = defines.ADDON.getSetting("uuid")
-            if guid == '':
-              guid = str(uuid.uuid1())
-              defines.ADDON.setSetting("uuid", guid)
-            guid = guid.replace('-', '')
-            print guid
-            data = defines.GET('http://1ttvxbmc.top/v3/auth.php?username=%s&password=%s&typeresult=json&application=xbmc&guid=%s' % (defines.ADDON.getSetting('login'), defines.ADDON.getSetting('password'), guid))
-            jdata = json.loads(data)
-            if jdata['success'] == 0:
-                self.showStatus(jdata['error'])
-                return
+            # self.showStatus("Авторизация")
+            # guid = defines.ADDON.getSetting("uuid")
+            # if guid == '':
+              # guid = str(uuid.uuid1())
+              # defines.ADDON.setSetting("uuid", guid)
+            # guid = guid.replace('-', '')
+            # print guid
+            # data = defines.GET('http://1ttvxbmc.top/v3/auth.php?username=%s&password=%s&typeresult=json&application=xbmc&guid=%s' % (defines.ADDON.getSetting('login'), defines.ADDON.getSetting('password'), guid))
+            # jdata = json.loads(data)
+            # if jdata['success'] == 0:
+                # self.showStatus(jdata['error'])
+                # return
 
-            self.user = {"login" : defines.ADDON.getSetting('login'), "balance" : jdata['balance']}
+            # self.user = {"login" : defines.ADDON.getSetting('login'), "balance" : jdata['balance']}
 
-            self.session = jdata['session']
+            # self.session = jdata['session']
             self.updateList()
-            if self.engine == defines.ENGINE_PROXY:
-                self.checkZones()
+            # if self.engine == defines.ENGINE_PROXY:
+                # self.checkZones()
         except Exception, e:
             LogToXBMC('OnInit: %s' % e, 2)
 
@@ -421,13 +357,13 @@ class WMainForm(xbmcgui.WindowXML):
                     self.showSimpleEpg()
                 elif self.epg.has_key(epg_id):
                     self.showSimpleEpg(epg_id)
-                else:
-                    self.showStatus('Загрузка программы')
-                    thr = defines.MyThread(self.getEpg, epg_id)
-                    thr.start()
+                # else:
+                    # self.showStatus('Загрузка программы')
+                    # thr = defines.MyThread(self.getEpg, epg_id)
+                    # thr.start()
 
-                thr = defines.MyThread(self.showScreen, selItem.getLabel2())
-                thr.start()
+                # thr = defines.MyThread(self.showScreen, selItem.getLabel2())
+                # thr.start()
                 img = self.getControl(1111)
                 img.setImage(selItem.getProperty('icon'))
     
@@ -676,23 +612,21 @@ class WMainForm(xbmcgui.WindowXML):
         thr = defines.MyThread(self.getChannels, 'channel', not (self.cur_category in (WMainForm.CHN_TYPE_TRANSLATION, WMainForm.CHN_TYPE_MODERATION, WMainForm.CHN_TYPE_FAVOURITE)))
         thr.daemon = False
         thr.start()
-        thr1 = defines.MyThread(self.getChannels, 'translation', self.cur_category == WMainForm.CHN_TYPE_TRANSLATION)
-        thr1.daemon = False
-        thr1.start()
-        thr2 = defines.MyThread(self.getChannels, 'moderation', self.cur_category == WMainForm.CHN_TYPE_MODERATION)
-        thr2.daemon = False
-        thr2.start()
+        #thr1 = defines.MyThread(self.getChannels, 'translation', self.cur_category == WMainForm.CHN_TYPE_TRANSLATION)
+        #thr1.daemon = False
+        #thr1.start()
+        #thr2 = defines.MyThread(self.getChannels, 'moderation', self.cur_category == WMainForm.CHN_TYPE_MODERATION)
+        #thr2.daemon = False
+        #thr2.start()
+        if self.engine == defines.ENGINE_POMOYKA:
+            xbmc.sleep(6000)
         thr3 = defines.MyThread(self.getChannels, 'favourite', self.cur_category == WMainForm.CHN_TYPE_FAVOURITE)
         thr3.start()
-        thr4 = defines.MyThread(self.getArcChannels, "", False)
-        thr4.start()
+       # thr4 = defines.MyThread(self.getArcChannels, "", False)
+       # thr4.start()
         LogToXBMC('Ожидание результата')
         if self.cur_category == WMainForm.CHN_TYPE_FAVOURITE:
-            thr3.join(10)
-        elif self.cur_category == WMainForm.CHN_TYPE_MODERATION:
-            thr2.join(10)
-        elif self.cur_category == WMainForm.CHN_TYPE_TRANSLATION:
-            thr1.join(10)
+            thr3.join(10)        
         else:
             thr.join(10)
         self.list.reset()

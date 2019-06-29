@@ -48,21 +48,21 @@ class MyPlayer(xbmcgui.WindowXML):
         self.t = None
         self.focusId = 203
         self.engine = defines.ADDON.getSetting("engine")
-        if self.engine == "":
-            self.engine = defines.ENGINE_NOXBIT
-            defines.ADDON.setSetting("engine", "%s" % defines.ENGINE_NOXBIT)
-        else:
-            self.engine = int(self.engine)
-        try:
-            self.use_nox = self.engine == defines.ENGINE_NOXBIT
-            self.nox_ip = defines.ADDON.getSetting("nox_ip")
-            self.nox_port = int(defines.ADDON.getSetting("nox_port"))
-            self.nox_hls = defines.ADDON.getSetting("nox_hls") == "true"
-        except:
-            defines.ADDON.setSetting("engine", "0")
-            defines.ADDON.setSetting("nox_ip","127.0.0.1")
-            defines.ADDON.setSetting("nox_port","6689")
-            self.use_nox = True
+        # if self.engine == "":
+            # self.engine = defines.ENGINE_NOXBIT
+            # defines.ADDON.setSetting("engine", "%s" % defines.ENGINE_NOXBIT)
+        # else:
+        self.engine = int(self.engine)
+        # try:
+            # self.use_nox = self.engine == defines.ENGINE_NOXBIT
+            # self.nox_ip = defines.ADDON.getSetting("nox_ip")
+            # self.nox_port = int(defines.ADDON.getSetting("nox_port"))
+            # self.nox_hls = defines.ADDON.getSetting("nox_hls") == "true"
+        # except:
+            # defines.ADDON.setSetting("engine", "0")
+            # defines.ADDON.setSetting("nox_ip","127.0.0.1")
+            # defines.ADDON.setSetting("nox_port","6689")
+            # self.use_nox = True
 
     def onInit(self):
         if not self.li:
@@ -104,14 +104,8 @@ class MyPlayer(xbmcgui.WindowXML):
         print 'CLOSE STOP'
         xbmc.executebuiltin('PlayerControl(Stop)')
 
-    def Start(self, li):
-        if self.engine == defines.ENGINE_NOXBIT:
-            print "use noxbit"
-            self.StartNox(li)
-        elif self.engine == defines.ENGINE_PROXY:
-            print "use tsproxy"
-            self.StartProxy(li)
-        elif self.engine == defines.ENGINE_HTTPACEPROXY or self.engine == defines.ENGINE_POMOYKA:
+    def Start(self, li):        
+        if self.engine == defines.ENGINE_HTTPACEPROXY or self.engine == defines.ENGINE_POMOYKA:
             print "httpaceproxy or pomoyka"            
             self.StartHTTPAceProxy(li)
         else:

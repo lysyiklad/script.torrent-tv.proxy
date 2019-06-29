@@ -13,11 +13,8 @@ ADDON_ICON	 = ADDON.getAddonInfo('icon')
 ADDON_PATH = ADDON.getAddonInfo('path')
 ADDON_ICON	 = ADDON.getAddonInfo('icon')
 DATA_PATH = xbmc.translatePath(os.path.join( "special://profile/addon_data", 'script.torrent-tv.proxy') )
-ENGINE_NOXBIT = 0
-ENGINE_AS = 1
-ENGINE_PROXY = 2
-ENGINE_HTTPACEPROXY = 3
-ENGINE_POMOYKA = 4
+ENGINE_HTTPACEPROXY = 0
+ENGINE_POMOYKA = 1
 skin = ADDON.getSetting('skin')
 SKIN_PATH = ADDON_PATH
 print skin
@@ -88,7 +85,6 @@ def getSetting(name, default="", save=True):
         res = default
         if res != "" and save:
             ADDON.setSetting(name, res)
-
     return res
 
 
